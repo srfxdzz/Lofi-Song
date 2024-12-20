@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Dashboard</title>
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        header {
+            background-color: #007BFF;
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.8em;
+            margin: 0;
+        }
+
+        h3 {
+            font-size: 1.2em;
+            margin: 10px 0;
+            color: #444;
+        }
+
+        /* Form Styles */
+        form {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            font-size: 1em;
+            margin-right: 10px;
+            color: #555;
+        }
+
+        input[type="text"] {
+            padding: 12px;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="text"]:focus {
+            border-color: #007BFF;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            color: white;
+            background-color: #28a745;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        button:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+
+        button.go-playlist {
+            background-color: #007BFF;
+        }
+
+        button.go-playlist:hover {
+            background-color: #0056b3;
+        }
+
+        /* List of Saved Keys */
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin-top: 15px;
+        }
+
+        li {
+            margin: 8px 0;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 25px;
+            justify-content: space-between;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .button-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Streaming Dashboard</h1>
+    </header>
+
+    <div class="container">
+        <!-- Current Stream Status -->
+        <h3>Stream Status: <span style="color: {{ 'green' if streaming else 'red' }};">{{ 'Running' if streaming else 'Stopped' }}</span></h3>
+
+        <!-- Display Current Stream Key -->
+        <h3>Current Stream Key: <span>{{ stream_key if stream_key else 'No key saved' }}</span></h3>
+
+        <!-- Form to Update Stream Key -->
+        <form method="POST">
+            <label for="stream_key">New Stream Key:</label>
+            <input type="text" id="stream_key" name="stream_key" placeholder="Enter New Stream Key" required>
+            <button type="submit">Save Stream Key</button>
+        </form>
+
+        <!-- List All Saved Keys -->
+        <h3>Saved Keys:</h3>
+        <ul>
+            {% if all_keys %}
+                {% for key in all_keys %}
+                    <li>{{ key }}</li>
+                {% endfor %}
+            {% else %}
+                <li>No keys saved yet.</li>
+            {% endif %}
+        </ul>
+
+        <!-- Start, Stop, and Playlist Buttons -->
+        <div class="button-container">
+            <form method="POST" action="/start">
+                <button type="submit" {{ 'disabled' if streaming }}>Start Stream</button>
+            </form>
+            <form method="POST" action="/stop">
+                <button type="submit" {{ '' if streaming else 'disabled' }}>Stop Stream</button>
+            </form>
+            <form method="GET" action="/playlist">
+                <button type="submit" class="go-playlist">Go to Playlist</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
