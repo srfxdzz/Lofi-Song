@@ -135,44 +135,44 @@ chat_id = "7132001605"
 
 
 
-# Step 2: Check and install ngrok
-if is_ngrok_installed():
-    print("ngrok is already installed. Skipping installation.")
-else:
-    print("Downloading ngrok...")
-    run_command(["wget", "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz"])
+# # Step 2: Check and install ngrok
+# if is_ngrok_installed():
+#     print("ngrok is already installed. Skipping installation.")
+# else:
+#     print("Downloading ngrok...")
+#     run_command(["wget", "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz"])
     
-    print("Extracting ngrok...")
-    run_command(["tar", "-xvzf", "ngrok-v3-stable-linux-amd64.tgz"])
+#     print("Extracting ngrok...")
+#     run_command(["tar", "-xvzf", "ngrok-v3-stable-linux-amd64.tgz"])
     
-    print("Moving ngrok to /usr/local/bin...")
-    run_command(["mv", "ngrok", "/usr/local/bin/"])
+#     print("Moving ngrok to /usr/local/bin...")
+#     run_command(["mv", "ngrok", "/usr/local/bin/"])
 
-    print("Adding ngrok auth token...")
-    auth_token = ngrok_token
-    run_command(["ngrok", "config", "add-authtoken", auth_token])
+#     print("Adding ngrok auth token...")
+#     auth_token = ngrok_token
+#     run_command(["ngrok", "config", "add-authtoken", auth_token])
 
-# Step 3: Run ngrok and send the URL
-print("Starting ngrok on port 5000...")
-ngrok_process = subprocess.Popen(["ngrok", "http", "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+# # Step 3: Run ngrok and send the URL
+# print("Starting ngrok on port 5000...")
+# ngrok_process = subprocess.Popen(["ngrok", "http", "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-time.sleep(5)
+# time.sleep(5)
 
-# Get ngrok URL from API
-try:
-    response = requests.get("http://localhost:4040/api/tunnels")
-    if response.status_code == 200:
-        tunnels = response.json().get("tunnels", [])
-        if tunnels:
-            public_url = tunnels[0].get("public_url", "No URL found")
-            print(f"ngrok public URL: {public_url}")
-            send_telegram_message(f"ngrok public URL: {public_url}", bot_token, chat_id)
-        else:
-            print("No tunnels found.")
-    else:
-        print(f"Failed to retrieve ngrok tunnels. Response: {response.text}")
-except Exception as e:
-    print(f"Error retrieving ngrok URL: {e}")
+# # Get ngrok URL from API
+# try:
+#     response = requests.get("http://localhost:4040/api/tunnels")
+#     if response.status_code == 200:
+#         tunnels = response.json().get("tunnels", [])
+#         if tunnels:
+#             public_url = tunnels[0].get("public_url", "No URL found")
+#             print(f"ngrok public URL: {public_url}")
+#             send_telegram_message(f"ngrok public URL: {public_url}", bot_token, chat_id)
+#         else:
+#             print("No tunnels found.")
+#     else:
+#         print(f"Failed to retrieve ngrok tunnels. Response: {response.text}")
+# except Exception as e:
+#     print(f"Error retrieving ngrok URL: {e}")
 
 
 
@@ -248,28 +248,26 @@ def dashboard():
 
 
 
-import os
-upload_folder = "slowed_reverbed"
 def prepare_next_song():
-    all_files = [f for f in os.listdir(upload_folder) if os.path.isfile(os.path.join(upload_folder, f))]
+    all_files = [f for f in os.listdir(REVERB_DIR) if os.path.isfile(os.path.join(REVERB_DIR, f))]
     if not all_files:
         raise FileNotFoundError("No files found in the upload folder.")
     
     random_file = random.choice(all_files)
-    file_path = os.path.join(upload_folder, random_file)
+    file_path = os.path.join(REVERB_DIR, random_file)
     return file_path, random_file
 
 
 def stream_video():
     global streaming_process
-    current_song = None
     current_reverb_path = None
 
     while True:
-        if not current_song:
-            current_reverb_path, current_song_file_name = prepare_next_song()
-            if not current_song:
-                continue
+
+        current_reverb_path, current_song_file_name = prepare_next_song()
+
+        
+        print(current_reverb_path)
 
         conn = sqlite3.connect('stream.db')
         cursor = conn.cursor()
@@ -432,8 +430,9 @@ def list_songs():
 
 @app.route('/convert')
 def convert():
-    files = os.listdir(UPLOAD_DIR)
-    return render_template('convert.html', files=files)
+    files = os.listdir(REVERB_DIR)
+    songs = [os.path.join(REVERB_DIR, f) for f in files if os.path.isfile(os.path.join(REVERB_DIR, f))]
+    return render_template('convert.html', files=songs)
 
 @app.route('/convert_start', methods=['POST'])
 def convert_all_to_reverb():
