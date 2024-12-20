@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert Songs</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        /* Custom styles */
+        .file-item {
+            font-size: 16px;
+            color: #444;
+        }
+        .file-item i {
+            color: #28a745;
+        }
+        .loading-spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Navigation Buttons -->
+        <div class="d-flex justify-content-between mb-4">
+            <a href="/" class="btn btn-primary btn-lg">Home</a>
+            <a href="/songs" class="btn btn-secondary btn-lg">Manage Songs</a>
+        </div>
+
+        <h1 class="text-center mb-4">Convert Songs</h1>
+
+        <!-- Convert All Button -->
+        <div class="mt-3 text-center">
+            <button id="convertAllButton" class="btn btn-success btn-lg">Convert All</button>
+        </div>
+
+        <!-- Delete All Converted Items Button -->
+        <div class="mt-3 text-center">
+            <button id="deleteAllConvertedButton" class="btn btn-danger btn-lg">Delete All Converted Items</button>
+        </div>
+
+        <!-- List of files available for conversion -->
+        <div class="list-group mt-4" id="fileList">
+            {% for file in files %}
+            <div class="list-group-item d-flex justify-content-between align-items-center file-item">
+                <i class="fas fa-music"></i> {{ file }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Loading Spinner (hidden initially) -->
+        <div id="loadingSpinner" class="mt-4 text-center loading-spinner">
+            <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Processing your request...</p>
+        </div>
+        
+        <!-- Success Modal -->
+        <div class="modal fade" id="actionSuccessModal" tabindex="-1" aria-labelledby="actionSuccessModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="actionSuccessModalLabel">Success</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <span id="modalMessage">Action completed successfully.</span>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS, Popper.js (for modals) -->
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js"></script>
+
+    <script>
+        // Handle Convert All action
+        $("#convertAllButton").click(function() {
+            $("#loadingSpinner").show();
+            $.ajax({
+                url: "/convert_start",
+                type: "POST",
+                success: function(response) {
+                    $("#loadingSpinner").hide();
+                    $('#modalMessage').text("The conversion process has started. Please wait.");
+                    $('#actionSuccessModal').modal('show');
+                },
+                error: function() {
+                    $("#loadingSpinner").hide();
+                    alert("Error starting the conversion process.");
+                }
+            });
+        });
+
+        // Handle Delete All Converted Items action
+        $("#deleteAllConvertedButton").click(function() {
+            if (!confirm("Are you sure you want to delete all converted items?")) {
+                return;
+            }
+            $("#loadingSpinner").show();
+            $.ajax({
+                url: "/delete_all_converted",
+                type: "POST",
+                success: function(response) {
+                    $("#loadingSpinner").hide();
+                    if (response.success) {
+                        $('#fileList').empty(); // Clear the file list
+                        $('#modalMessage').text("All converted items have been deleted.");
+                        $('#actionSuccessModal').modal('show');
+                    } else {
+                        alert(response.error || "Failed to delete converted items.");
+                    }
+                },
+                error: function() {
+                    $("#loadingSpinner").hide();
+                    alert("An error occurred while deleting converted items.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

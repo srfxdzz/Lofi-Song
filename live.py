@@ -10,7 +10,73 @@ from test_1 import *
 from dotenv import load_dotenv
 from music import *
 from down_yt import *
+from flask import Flask, render_template, request, jsonify
+import os
+import threading
+import yt_dlp
+import uuid
+import random
+from queue import Queue
+from music import slowedreverb
 
+app = Flask(__name__)
+
+# Directories
+UPLOAD_DIR = "uploaded_files"
+REVERB_DIR = "slowed_reverbed"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(REVERB_DIR, exist_ok=True)
+
+# Load playlist configuration
+PLAYLIST_FILE = "playlists2.config"
+try:
+    with open(PLAYLIST_FILE, "r") as f:
+        songs = [line.strip() for line in f.readlines()]
+except FileNotFoundError:
+    songs = []
+
+# Shared state for progress tracking
+progress = {}
+queue = Queue()
+
+# Function to download YouTube audio
+def download_youtube_audio(youtube_link):
+    uu = str(uuid.uuid4())
+    try:
+        with yt_dlp.YoutubeDL({
+            'format': 'bestaudio/best',
+            'outtmpl': f'uploaded_files/{uu}.%(ext)s',
+            "quiet": True,
+            "noplaylist": True
+        }) as ydl:
+            info_dict = ydl.extract_info(youtube_link, download=True)
+            song_name = info_dict['title']
+        return uu, song_name
+    except Exception as e:
+        print(f"Error downloading {youtube_link}: {e}")
+        return None
+
+# Worker thread function
+def worker():
+    while True:
+        song_url, task_id = queue.get()
+        if song_url is None:
+            break
+        progress[task_id] = f"Downloading: {song_url}"
+        result = download_youtube_audio(song_url)
+        if result:
+            progress[task_id] = f"Downloaded: {result[1]}"
+        else:
+            progress[task_id] = f"Failed: {song_url}"
+        queue.task_done()
+
+# Start worker threads
+NUM_THREADS = 4
+threads = []
+for _ in range(NUM_THREADS):
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+    threads.append(thread)
 # Load the .env file
 load_dotenv()
 
@@ -117,7 +183,7 @@ app.secret_key = 'srfxdz'
 
 
 stream_url = 'rtmp://a.rtmp.youtube.com/live2'
-streaming_process = None
+streaming_process = None 
 def is_streaming():
     """Check if the streaming process is running."""
     global streaming_process
@@ -181,32 +247,27 @@ def dashboard():
     )
 
 
+
+import os
+upload_folder = "slowed_reverbed"
 def prepare_next_song():
-    """Prepare the next song to stream."""
-    try:
-        get_song_details = get_random_song()
-        song_name = get_song_details[1]
-        song_path = get_song_details[0]
-        input_path = f"uploaded_files/{song_path}.webm"
-        output_path = f"slowed_reverbed/{song_path}.wav"
-        slowedreverb(input_path, output_path)
-        return song_name, output_path, input_path
-    except Exception as e:
-        print(f"Error preparing next song: {e}")
-        return None, None, None
+    all_files = [f for f in os.listdir(upload_folder) if os.path.isfile(os.path.join(upload_folder, f))]
+    if not all_files:
+        raise FileNotFoundError("No files found in the upload folder.")
+    
+    random_file = random.choice(all_files)
+    file_path = os.path.join(upload_folder, random_file)
+    return file_path, random_file
 
 
 def stream_video():
     global streaming_process
     current_song = None
     current_reverb_path = None
-    input_path = None
 
     while True:
-        # Prepare the first song if not already prepared
         if not current_song:
-            current_song, current_reverb_path, input_path = prepare_next_song()
-            # If there's an error preparing the song, skip to the next iteration
+            current_reverb_path, current_song_file_name = prepare_next_song()
             if not current_song:
                 continue
 
@@ -222,7 +283,7 @@ def stream_video():
 
         stream_key = data[0]
 
-        # Start streaming the current song
+
         ffmpeg_command = [
             "ffmpeg",
             "-stream_loop", "-1",
@@ -246,10 +307,8 @@ def stream_video():
         ]
 
         try:
-            # Start streaming in a subprocess
             streaming_process = subprocess.Popen(ffmpeg_command)
 
-            # Calculate the song duration using ffprobe
             duration_command = [
                 "ffprobe",
                 "-v", "error",
@@ -258,31 +317,19 @@ def stream_video():
                 current_reverb_path
             ]
             song_duration = float(subprocess.check_output(duration_command))
-
-            # Start preparing the next song a few seconds before the current song ends
             time.sleep(max(0, song_duration - 5))
 
-            # Prepare the next song in a separate thread
             next_song_thread = threading.Thread(target=prepare_next_song)
             next_song_thread.start()
 
-            # Wait for the current song to finish
             streaming_process.wait()
-
-            # Delete the played song
-            if current_reverb_path:
-                os.remove(current_reverb_path)
-            if input_path:
-                os.remove(input_path)
-
-            # Set the next song as the current song
             next_song_thread.join()
-            current_song, current_reverb_path, input_path = prepare_next_song()
+            current_reverb_path, current_song_file_name = prepare_next_song()
 
         except Exception as e:
             print(f"Error during streaming: {e}")
-            # Skip to the next song if there's an error
-            current_song, current_reverb_path, input_path = None, None, None
+            current_reverb_path, current_song_file_name = None, None
+
 
 
 @app.route('/start', methods=['POST'])
@@ -354,7 +401,95 @@ def delete_video(playlist_id, video_id):
     return redirect(url_for('index'))
 
 
+
+@app.route('/youtube')
+def index():
+    return render_template('youtube.html', songs=songs)
+
+@app.route('/download_all', methods=['POST'])
+def download_all():
+    task_id = str(uuid.uuid4())
+    for song_url in songs:
+        queue.put((song_url, task_id))
+    return jsonify({"task_id": task_id})
+
+@app.route('/progress/<task_id>')
+def get_progress(task_id):
+    return jsonify(progress.get(task_id, "No progress available"))
+
+@app.route('/stop', methods=['POST'])
+def stop():
+    # Stop all threads by sending None to the queue
+    for _ in threads:
+        queue.put((None, None))
+    return "Stopping downloads", 200
+
+@app.route('/songs')
+def list_songs():
+    files = os.listdir(UPLOAD_DIR)
+    songs = [os.path.join(UPLOAD_DIR, f) for f in files if os.path.isfile(os.path.join(UPLOAD_DIR, f))]
+    return render_template('songs.html', songs=songs)
+
+@app.route('/convert')
+def convert():
+    files = os.listdir(UPLOAD_DIR)
+    return render_template('convert.html', files=files)
+
+@app.route('/convert_start', methods=['POST'])
+def convert_all_to_reverb():
+    files = os.listdir(UPLOAD_DIR)
+    task_id = str(uuid.uuid4())
+    reverb_progress = {"completed": 0, "total": len(files)}
+
+    def convert_worker():
+        for file in files:
+            input_path = os.path.join(UPLOAD_DIR, file)
+            output_path = f"slowed_reverbed/{file}.wav"
+
+            print(input_path,output_path)
+            if slowedreverb(input_path, output_path):
+                reverb_progress["completed"] += 1
+
+    threading.Thread(target=convert_worker, daemon=True).start()
+    return jsonify({"task_id": task_id})
+
+@app.route('/delete', methods=['POST'])
+def delete_song():
+    file_path = request.form.get("file_path")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "File not found"})
+
+
+
+@app.route('/delete_all', methods=['POST'])
+def delete_all_songs():
+    try:
+        files = os.listdir(UPLOAD_DIR)
+        for file in files:
+            os.remove(os.path.join(UPLOAD_DIR, file))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+
+
+@app.route('/delete_all_converted', methods=['POST'])
+def delete_all_converted():
+    try:
+        converted_files = os.listdir(REVERB_DIR)  # Replace with your converted files directory
+        for file in converted_files:
+            os.remove(os.path.join(REVERB_DIR, file))
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+
 if __name__ == '__main__':
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
     init_db()
     port = 5000
     app.run(host='0.0.0.0', port=port, debug=True)
