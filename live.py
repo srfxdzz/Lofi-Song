@@ -434,6 +434,7 @@ def convert():
     songs = [os.path.join(REVERB_DIR, f) for f in files if os.path.isfile(os.path.join(REVERB_DIR, f))]
     return render_template('convert.html', files=songs)
 
+
 @app.route('/convert_start', methods=['POST'])
 def convert_all_to_reverb():
     files = os.listdir(UPLOAD_DIR)
