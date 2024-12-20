@@ -135,44 +135,44 @@ chat_id = "7132001605"
 
 
 
-# # Step 2: Check and install ngrok
-# if is_ngrok_installed():
-#     print("ngrok is already installed. Skipping installation.")
-# else:
-#     print("Downloading ngrok...")
-#     run_command(["wget", "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz"])
+# Step 2: Check and install ngrok
+if is_ngrok_installed():
+    print("ngrok is already installed. Skipping installation.")
+else:
+    print("Downloading ngrok...")
+    run_command(["wget", "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz"])
     
-#     print("Extracting ngrok...")
-#     run_command(["tar", "-xvzf", "ngrok-v3-stable-linux-amd64.tgz"])
+    print("Extracting ngrok...")
+    run_command(["tar", "-xvzf", "ngrok-v3-stable-linux-amd64.tgz"])
     
-#     print("Moving ngrok to /usr/local/bin...")
-#     run_command(["mv", "ngrok", "/usr/local/bin/"])
+    print("Moving ngrok to /usr/local/bin...")
+    run_command(["mv", "ngrok", "/usr/local/bin/"])
 
-#     print("Adding ngrok auth token...")
-#     auth_token = ngrok_token
-#     run_command(["ngrok", "config", "add-authtoken", auth_token])
+    print("Adding ngrok auth token...")
+    auth_token = ngrok_token
+    run_command(["ngrok", "config", "add-authtoken", auth_token])
 
-# # Step 3: Run ngrok and send the URL
-# print("Starting ngrok on port 5000...")
-# ngrok_process = subprocess.Popen(["ngrok", "http", "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+# Step 3: Run ngrok and send the URL
+print("Starting ngrok on port 5000...")
+ngrok_process = subprocess.Popen(["ngrok", "http", "5000"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-# time.sleep(5)
+time.sleep(5)
 
-# # Get ngrok URL from API
-# try:
-#     response = requests.get("http://localhost:4040/api/tunnels")
-#     if response.status_code == 200:
-#         tunnels = response.json().get("tunnels", [])
-#         if tunnels:
-#             public_url = tunnels[0].get("public_url", "No URL found")
-#             print(f"ngrok public URL: {public_url}")
-#             send_telegram_message(f"ngrok public URL: {public_url}", bot_token, chat_id)
-#         else:
-#             print("No tunnels found.")
-#     else:
-#         print(f"Failed to retrieve ngrok tunnels. Response: {response.text}")
-# except Exception as e:
-#     print(f"Error retrieving ngrok URL: {e}")
+# Get ngrok URL from API
+try:
+    response = requests.get("http://localhost:4040/api/tunnels")
+    if response.status_code == 200:
+        tunnels = response.json().get("tunnels", [])
+        if tunnels:
+            public_url = tunnels[0].get("public_url", "No URL found")
+            print(f"ngrok public URL: {public_url}")
+            send_telegram_message(f"ngrok public URL: {public_url}", bot_token, chat_id)
+        else:
+            print("No tunnels found.")
+    else:
+        print(f"Failed to retrieve ngrok tunnels. Response: {response.text}")
+except Exception as e:
+    print(f"Error retrieving ngrok URL: {e}")
 
 
 
