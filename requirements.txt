@@ -9,7 +9,7 @@ google-auth-httplib2==0.2.0
 googleapis-common-protos==1.66.0
 httplib2==0.22.0
 itsdangerous==2.2.0
-numpy==2.2.0
+numpy==2.0.2
 pedalboard==0.9.16
 proto-plus==1.25.0
 protobuf==5.29.2
