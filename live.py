@@ -432,26 +432,16 @@ def list_songs():
 def convert():
     files = os.listdir(REVERB_DIR)
     songs = [os.path.join(REVERB_DIR, f) for f in files if os.path.isfile(os.path.join(REVERB_DIR, f))]
-    return render_template('convert.html', files=songs)
-
-
-@app.route('/convert_start', methods=['POST'])
-def convert_all_to_reverb():
-    files = os.listdir(UPLOAD_DIR)
-    task_id = str(uuid.uuid4())
-    reverb_progress = {"completed": 0, "total": len(files)}
-
+    
     def convert_worker():
+        files = os.listdir(UPLOAD_DIR)
         for file in files:
+            
             input_path = os.path.join(UPLOAD_DIR, file)
             output_path = f"slowed_reverbed/{file}.wav"
-
-            print(input_path,output_path)
-            if slowedreverb(input_path, output_path):
-                reverb_progress["completed"] += 1
-
+            slowedreverb(input_path, output_path)
     threading.Thread(target=convert_worker, daemon=True).start()
-    return jsonify({"task_id": task_id})
+    return render_template('convert.html', files=songs)
 
 @app.route('/delete', methods=['POST'])
 def delete_song():
